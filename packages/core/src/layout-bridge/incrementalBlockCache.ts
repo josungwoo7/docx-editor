@@ -301,9 +301,22 @@ export function updateBlocks(
         newNodeToBlockRange.set(nodeIdx, [start + blockDelta, end + blockDelta]);
       }
     }
-    // Reindex pmStart/pmEnd on blocks after the splice point
-    if (result.length > dirtyFrom + newBlocks.length) {
-      reindexPositions(result, dirtyFrom + newBlocks.length, blockDelta === 0 ? 0 : 0);
+  }
+
+  // Compute PM position delta for reused blocks after the splice point.
+  // Even when block count is unchanged (e.g. typing a character), the PM
+  // positions shift by the document size difference at the splice boundary.
+  const spliceStart = dirtyFrom + newBlocks.length;
+  if (result.length > spliceStart) {
+    // `pos` already holds the new doc's PM position after the last converted node.
+    // Compute the old doc's PM position at the same boundary.
+    let oldPos = 0;
+    for (let i = 0; i < extendedNodeTo && i < prevDoc.childCount; i++) {
+      oldPos += prevDoc.child(i).nodeSize;
+    }
+    const pmDelta = pos - oldPos;
+    if (pmDelta !== 0) {
+      reindexPositions(result, spliceStart, pmDelta);
     }
   }
 
