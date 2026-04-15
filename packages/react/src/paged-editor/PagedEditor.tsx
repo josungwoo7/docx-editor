@@ -132,6 +132,11 @@ import { useDragAutoScroll } from './useDragAutoScroll';
 // Visual line navigation hook
 import { useVisualLineNavigation } from './useVisualLineNavigation';
 
+// Gate layout-pipeline step timings behind an opt-in flag. Enable by setting
+// `globalThis.__DOCX_EDITOR_LAYOUT_DEBUG__ = true` in the browser console.
+const layoutDebugEnabled = (): boolean =>
+  (globalThis as { __DOCX_EDITOR_LAYOUT_DEBUG__?: boolean }).__DOCX_EDITOR_LAYOUT_DEBUG__ === true;
+
 // =============================================================================
 // TYPES
 // =============================================================================
@@ -1917,10 +1922,11 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
 
           const usedIncremental = incrementalDirtyFrom >= 0;
           let stepTime = performance.now() - stepStart;
-          // Always log step timing for performance diagnostics
-          console.debug(
-            `[PagedEditor] Step 1 (${usedIncremental ? `incremental from ${incrementalDirtyFrom}` : 'full'}) → ${stepTime.toFixed(1)}ms (${newBlocks.length} blocks)`
-          );
+          if (layoutDebugEnabled()) {
+            console.debug(
+              `[PagedEditor] Step 1 (${usedIncremental ? `incremental from ${incrementalDirtyFrom}` : 'full'}) → ${stepTime.toFixed(1)}ms (${newBlocks.length} blocks)`
+            );
+          }
           if (stepTime > 500) {
             console.warn(
               `[PagedEditor] ${usedIncremental ? 'incremental' : 'toFlowBlocks'} took ${Math.round(stepTime)}ms (${newBlocks.length} blocks)`
@@ -1946,9 +1952,11 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
             newMeasures = measureBlocks(newBlocks, blockWidths);
           }
           stepTime = performance.now() - stepStart;
-          console.debug(
-            `[PagedEditor] Step 2 (${usedIncremental ? `measureIncremental from ${incrementalDirtyFrom}` : 'full'}) → ${stepTime.toFixed(1)}ms (${newBlocks.length} blocks)`
-          );
+          if (layoutDebugEnabled()) {
+            console.debug(
+              `[PagedEditor] Step 2 (${usedIncremental ? `measureIncremental from ${incrementalDirtyFrom}` : 'full'}) → ${stepTime.toFixed(1)}ms (${newBlocks.length} blocks)`
+            );
+          }
           if (stepTime > 1000) {
             console.warn(
               `[PagedEditor] ${usedIncremental ? 'measureBlocksIncremental' : 'measureBlocks'} took ${Math.round(stepTime)}ms (${newBlocks.length} blocks)`
@@ -2095,15 +2103,19 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
                 snapshotBlock >= 0 ? cache.paginatorSnapshotAtBlock.get(snapshotBlock) : undefined;
 
               if (snapshot && snapshotBlock > 0) {
-                console.debug(
-                  `[PagedEditor] Step 3 using RESUME from block ${snapshotBlock} (dirty: ${incrementalDirtyFrom})`
+                // dirtyBlockEnd is the exclusive end of the converted range
+                // (includes list-counter propagation). Convergence checks
+                // must not start before this block.
+                const dirtyTo = Math.min(
+                  pendingIncrementalResult?.dirtyBlockEnd ?? newBlocks.length,
+                  newBlocks.length
                 );
                 newLayout = layoutDocument(newBlocks, newMeasures, {
                   ...layoutOpts,
                   resumeFrom: {
                     resumeFromBlock: snapshotBlock,
                     paginatorSnapshot: snapshot,
-                    dirtyTo: Math.min(incrementalDirtyFrom + 10, newBlocks.length),
+                    dirtyTo,
                     prevStatesAtBlock:
                       cache.statesAtBlock.length > 0 ? cache.statesAtBlock : undefined,
                     prevPages: layout?.pages,
@@ -2118,9 +2130,11 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
           }
 
           stepTime = performance.now() - stepStart;
-          console.debug(
-            `[PagedEditor] Step 3 (layout) → ${stepTime.toFixed(1)}ms (${newLayout.pages.length} pages)`
-          );
+          if (layoutDebugEnabled()) {
+            console.debug(
+              `[PagedEditor] Step 3 (layout) → ${stepTime.toFixed(1)}ms (${newLayout.pages.length} pages)`
+            );
+          }
           if (stepTime > 500) {
             console.warn(
               `[PagedEditor] layoutDocument took ${Math.round(stepTime)}ms (${newLayout.pages.length} pages)`
@@ -2178,7 +2192,9 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
             });
 
             stepTime = performance.now() - stepStart;
-            console.debug(`[PagedEditor] Step 4 (paint) → ${stepTime.toFixed(1)}ms`);
+            if (layoutDebugEnabled()) {
+              console.debug(`[PagedEditor] Step 4 (paint) → ${stepTime.toFixed(1)}ms`);
+            }
             if (stepTime > 500) {
               console.warn(`[PagedEditor] renderPages took ${Math.round(stepTime)}ms`);
             }

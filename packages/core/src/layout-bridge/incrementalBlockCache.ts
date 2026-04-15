@@ -185,6 +185,12 @@ export interface IncrementalUpdateResult {
   nodeToBlockRange: Map<number, [number, number]>;
   /** List counter snapshots captured during conversion. */
   listCounterSnapshots: Map<number, Map<number, number[]>>;
+  /**
+   * Exclusive end of the dirty block range in the result array.
+   * Accounts for list-counter propagation past the input dirty range so
+   * callers can run convergence checks starting from the right block.
+   */
+  dirtyBlockEnd: number;
 }
 
 /**
@@ -200,7 +206,14 @@ export function updateBlocks(
   opts: ToFlowBlocksOptions
 ): IncrementalUpdateResult {
   const { prevDoc, blocks: oldBlocks, nodeToBlockRange } = cache;
-  if (!prevDoc) return { blocks: oldBlocks, nodeToBlockRange, listCounterSnapshots: new Map() };
+  if (!prevDoc) {
+    return {
+      blocks: oldBlocks,
+      nodeToBlockRange,
+      listCounterSnapshots: new Map(),
+      dirtyBlockEnd: dirtyTo,
+    };
+  }
 
   // Find which top-level node indices map to the dirty block range
   let dirtyNodeFrom = -1;
@@ -325,6 +338,7 @@ export function updateBlocks(
     blocks: result,
     nodeToBlockRange: newNodeToBlockRange,
     listCounterSnapshots: newListCounterSnapshots,
+    dirtyBlockEnd: dirtyFrom + newBlocks.length,
   };
 }
 
@@ -381,10 +395,10 @@ export function rebuildIndices(cache: IncrementalBlockCache, doc: PMNode): void 
   cache.floatingAnchorIndices = new Set();
 
   let blockIdx = 0;
+  let nodeStart = 0;
 
   for (let nodeIdx = 0; nodeIdx < doc.childCount; nodeIdx++) {
     const node = doc.child(nodeIdx);
-    const nodeStart = getNodeStartPos(doc, nodeIdx);
     const nodeEnd = nodeStart + node.nodeSize;
     const rangeStart = blockIdx;
 
@@ -406,6 +420,7 @@ export function rebuildIndices(cache: IncrementalBlockCache, doc: PMNode): void 
     }
 
     cache.nodeToBlockRange.set(nodeIdx, [rangeStart, blockIdx]);
+    nodeStart = nodeEnd;
   }
 }
 
@@ -502,17 +517,6 @@ function restoreListCounters(
     result.set(numId, [...counters]);
   }
   return result;
-}
-
-/**
- * Get the document-relative start position of a top-level node by index.
- */
-function getNodeStartPos(doc: PMNode, nodeIndex: number): number {
-  let pos = 0;
-  for (let i = 0; i < nodeIndex; i++) {
-    pos += doc.child(i).nodeSize;
-  }
-  return pos;
 }
 
 /**

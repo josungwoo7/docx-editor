@@ -285,6 +285,7 @@ export function layoutDocument(
   const dirtyTo = resume?.dirtyTo ?? blocks.length;
   const prevStates = resume?.prevStatesAtBlock;
   let convergentCount = 0;
+  let earlyExitIndex: number | undefined;
 
   // Snapshot capture: take a paginator snapshot at the first block of each new page.
   // These snapshots enable future incremental layout runs to resume from a page boundary.
@@ -383,11 +384,11 @@ export function layoutDocument(
           // Layout has converged — splice remaining pages from previous run.
           // The current paginator has pages up to the convergence point.
           // Remaining pages (and their statesAtBlock) come from the previous run.
-          const earlyExitAt = i;
+          earlyExitIndex = i;
 
           // Copy remaining statesAtBlock from previous run
           if (prevStates) {
-            for (let j = earlyExitAt + 1; j < prevStates.length; j++) {
+            for (let j = earlyExitIndex + 1; j < prevStates.length; j++) {
               statesAtBlock[j] = prevStates[j];
             }
           }
@@ -415,8 +416,7 @@ export function layoutDocument(
     paginator.getCurrentState();
   }
 
-  const earlyExitBlock =
-    convergentCount >= CONVERGENCE_THRESHOLD ? statesAtBlock.length - 1 : undefined;
+  const earlyExitBlock = earlyExitIndex;
 
   return {
     pageSize,

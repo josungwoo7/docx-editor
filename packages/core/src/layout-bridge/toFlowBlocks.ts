@@ -1000,14 +1000,11 @@ export function convertTopLevelNode(
         const block = convertParagraph(node, pos, opts);
         const pmAttrs = node.attrs as PMParagraphAttrs;
 
-        if (pmAttrs.numPr) {
-          if (!pmAttrs.listMarker) {
-            const numId = pmAttrs.numPr.numId;
-            // numId === 0 means "no numbering" per OOXML spec (ECMA-376)
-            if (numId == null || numId === 0) {
-              result.push(block);
-              break;
-            }
+        if (pmAttrs.numPr && !pmAttrs.listMarker) {
+          const numId = pmAttrs.numPr.numId;
+          // numId === 0 means "no numbering" per OOXML spec (ECMA-376) — skip
+          // list-marker assignment but continue so section-break still emits.
+          if (numId != null && numId !== 0) {
             const level = pmAttrs.numPr.ilvl ?? 0;
             const counters = listCounters.get(numId) ?? new Array(9).fill(0);
 
