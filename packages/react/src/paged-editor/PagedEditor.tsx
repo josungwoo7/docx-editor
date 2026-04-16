@@ -3810,17 +3810,21 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // Re-layout when header/footer content changes (e.g., after HF editor save).
+    // Re-layout when inputs that affect pagination change (HF content, margins,
+    // page size, columns, section properties, zoom). These inputs don't go
+    // through a PM transaction, so scheduleLayout's keystroke path doesn't
+    // fire — this effect is what triggers a re-layout for them.
     //
-    // Omit runLayoutPipeline from deps. Its identity churns on every keystroke
-    // because the `document` prop changes whenever the parent pushes a new doc
-    // into history, which reruns this effect and fires a redundant full layout
-    // pass on top of the one already scheduled for the transaction.
-    const headerFooterEpochRef = useRef(0);
+    // Intentionally omit runLayoutPipeline from deps. Its identity churns on
+    // every keystroke because the `document` prop changes whenever the parent
+    // pushes a new doc into history; listing it here would re-fire a full
+    // layout pass on top of the one the transaction handler already scheduled.
+    // We list the concrete inputs that *should* trigger re-layout instead.
+    const layoutInputsEpochRef = useRef(0);
     useEffect(() => {
       // Skip the initial render — handleEditorViewReady already does the first layout
-      if (headerFooterEpochRef.current === 0) {
-        headerFooterEpochRef.current = 1;
+      if (layoutInputsEpochRef.current === 0) {
+        layoutInputsEpochRef.current = 1;
         return;
       }
       const view = hiddenPMRef.current?.getView();
@@ -3828,7 +3832,18 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
         runLayoutPipeline(view.state);
       }
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [headerContent, footerContent, firstPageHeaderContent, firstPageFooterContent]);
+    }, [
+      headerContent,
+      footerContent,
+      firstPageHeaderContent,
+      firstPageFooterContent,
+      margins,
+      pageSize,
+      columns,
+      pageGap,
+      zoom,
+      sectionProperties,
+    ]);
 
     // Re-compute selection overlay when the container resizes.
     // Page elements shift during window resize (centering, scrollbar changes),
