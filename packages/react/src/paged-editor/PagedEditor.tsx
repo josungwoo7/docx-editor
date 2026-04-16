@@ -3811,8 +3811,11 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
     }, []);
 
     // Re-layout when header/footer content changes (e.g., after HF editor save).
-    // runLayoutPipeline includes headerContent/footerContent in its deps, but it
-    // only runs when explicitly called — this effect triggers it.
+    //
+    // Omit runLayoutPipeline from deps. Its identity churns on every keystroke
+    // because the `document` prop changes whenever the parent pushes a new doc
+    // into history, which reruns this effect and fires a redundant full layout
+    // pass on top of the one already scheduled for the transaction.
     const headerFooterEpochRef = useRef(0);
     useEffect(() => {
       // Skip the initial render — handleEditorViewReady already does the first layout
@@ -3824,13 +3827,8 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
       if (view) {
         runLayoutPipeline(view.state);
       }
-    }, [
-      headerContent,
-      footerContent,
-      firstPageHeaderContent,
-      firstPageFooterContent,
-      runLayoutPipeline,
-    ]);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [headerContent, footerContent, firstPageHeaderContent, firstPageFooterContent]);
 
     // Re-compute selection overlay when the container resizes.
     // Page elements shift during window resize (centering, scrollbar changes),
