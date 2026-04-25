@@ -8,7 +8,8 @@
 
 import { describe, expect, it, beforeAll } from 'bun:test';
 import { GlobalRegistrator } from '@happy-dom/global-registrator';
-import { findScrollTargetForPmPosition } from './scrollTarget';
+import { findScrollTargetForPmPosition, findLayoutScrollYForPmPosition } from './scrollTarget';
+import type { Layout } from '@eigenpal/docx-core/layout-engine';
 
 beforeAll(() => {
   if (!('document' in globalThis)) {
@@ -72,5 +73,55 @@ describe('findScrollTargetForPmPosition', () => {
     const el = findScrollTargetForPmPosition(container, 55);
 
     expect(el?.textContent).toBe('exact');
+  });
+});
+
+function makeLayout(
+  pages: Array<{ height: number; fragments: Array<{ y: number; pmStart: number; pmEnd: number }> }>
+): Layout {
+  return {
+    pageSize: { w: 800, h: 1100 },
+    pageGap: 20,
+    pages: pages.map((p, i) => ({
+      number: i + 1,
+      fragments: p.fragments.map((f) => ({
+        kind: 'paragraph' as const,
+        blockId: i,
+        x: 0,
+        y: f.y,
+        width: 800,
+        height: 20,
+        fromLine: 0,
+        toLine: 1,
+        pmStart: f.pmStart,
+        pmEnd: f.pmEnd,
+      })),
+      margins: { top: 0, right: 0, bottom: 0, left: 0 },
+      size: { w: 800, h: p.height },
+    })),
+  } as unknown as Layout;
+}
+
+describe('findLayoutScrollYForPmPosition', () => {
+  it('returns absolute Y of the page+fragment containing pmPos', () => {
+    const layout = makeLayout([
+      { height: 1100, fragments: [{ y: 50, pmStart: 0, pmEnd: 100 }] },
+      // page 2 starts at y=1120 (1100 + 20 gap). Fragment at y=200 within page 2.
+      { height: 1100, fragments: [{ y: 200, pmStart: 200, pmEnd: 300 }] },
+    ]);
+
+    expect(findLayoutScrollYForPmPosition(layout, 250)).toBe(1120 + 200);
+  });
+
+  it('returns null when no fragment contains pmPos', () => {
+    const layout = makeLayout([{ height: 1100, fragments: [{ y: 50, pmStart: 0, pmEnd: 100 }] }]);
+
+    expect(findLayoutScrollYForPmPosition(layout, 9999)).toBeNull();
+  });
+
+  it('returns null when layout is missing or pmPos non-finite', () => {
+    expect(findLayoutScrollYForPmPosition(null, 10)).toBeNull();
+    expect(findLayoutScrollYForPmPosition(undefined, 10)).toBeNull();
+    expect(findLayoutScrollYForPmPosition(makeLayout([]), Number.NaN)).toBeNull();
   });
 });

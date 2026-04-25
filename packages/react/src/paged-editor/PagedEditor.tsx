@@ -32,7 +32,11 @@ import type { EditorView } from 'prosemirror-view';
 
 // Internal components
 import { HiddenProseMirror, type HiddenProseMirrorRef } from './HiddenProseMirror';
-import { findScrollTargetForPmPosition } from './scrollTarget';
+import {
+  findScrollTargetForPmPosition,
+  findLayoutScrollYForPmPosition,
+  findScrollableAncestor,
+} from './scrollTarget';
 import { SelectionOverlay } from './SelectionOverlay';
 import { ImageSelectionOverlay, type ImageSelectionInfo } from './ImageSelectionOverlay';
 import { DecorationLayer } from './DecorationLayer';
@@ -2611,14 +2615,43 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
     }, []);
 
     /** Scroll visible pages to a ProseMirror position */
-    const scrollToPositionImpl = useCallback((pmPos: number) => {
-      const pageContainer = pagesContainerRef.current;
-      if (!pageContainer) return;
-      const targetEl = findScrollTargetForPmPosition(pageContainer, pmPos);
-      if (targetEl) {
-        targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    }, []);
+    const layoutRef = useRef<Layout | null>(null);
+    layoutRef.current = layout;
+
+    const scrollToPositionImpl = useCallback(
+      (pmPos: number) => {
+        const pageContainer = pagesContainerRef.current;
+        if (!pageContainer) return;
+
+        // Prefer a rendered DOM target — exact data-pm-start, then a
+        // [data-pm-start, data-pm-end] range that contains pmPos.
+        const targetEl = findScrollTargetForPmPosition(pageContainer, pmPos);
+        if (targetEl) {
+          targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          return;
+        }
+
+        // Fallback: when the target page is virtualized out of the DOM, look
+        // up the page+fragment in the layout and scroll the nearest scrollable
+        // ancestor to that absolute Y. The layout is the same source of truth
+        // the renderer uses, so this is robust to virtualization.
+        const targetY = findLayoutScrollYForPmPosition(layoutRef.current, pmPos);
+        if (targetY == null) return;
+
+        const scrollEl = findScrollableAncestor(pageContainer);
+        if (!scrollEl) return;
+
+        const containerRect = pageContainer.getBoundingClientRect();
+        const scrollRect = scrollEl.getBoundingClientRect();
+        const containerOffsetWithinScroll = containerRect.top - scrollRect.top + scrollEl.scrollTop;
+        const desiredScrollTop = containerOffsetWithinScroll + targetY - scrollEl.clientHeight / 2;
+        scrollEl.scrollTo({
+          top: Math.max(0, desiredScrollTop),
+          behavior: 'smooth',
+        });
+      },
+      [layout]
+    );
 
     /**
      * Handle mousedown on pages - start selection or drag.

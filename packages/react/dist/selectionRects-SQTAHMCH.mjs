@@ -1,1 +1,0 @@
-export{q as getCaretPosition,s as groupRectsByPage,r as isMultiPageSelection,p as selectionToRects}from'./chunk-2HDYCD2Q.mjs';import'./chunk-TAUMSKRE.mjs';
