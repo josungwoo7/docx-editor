@@ -1,0 +1,10 @@
+export { a as DocxEditor, b as DocxEditorHandle, c as DocxEditorProps, d as DocxEditorRef, e as EditorPlugin, f as ErrorBoundary, g as ErrorBoundaryProps, h as ErrorContextValue, i as ErrorProvider, P as PLUGIN_HOST_STYLES, k as ParseErrorDisplay, l as ParseErrorDisplayProps, m as PluginContext, n as PluginHost, o as PluginHostProps, p as PluginHostRef, r as RenderAsyncOptions, t as SelectionOverlayProps, T as TableSelectionState, U as UnsupportedFeatureWarning, w as UnsupportedFeatureWarningProps, x as UseAutoSaveOptions, y as UseAutoSaveReturn, z as UseClipboardOptions, A as UseClipboardReturn, B as UseSelectionHighlightOptions, C as UseSelectionHighlightReturn, F as UseTableSelectionOptions, G as UseTableSelectionReturn, I as UseWheelZoomOptions, J as UseWheelZoomReturn, Z as ZOOM_PRESETS, L as clampZoom, O as findNearestZoomPreset, Q as formatZoom, V as generateOverlayElements, _ as getNextZoomPreset, $ as getPreviousZoomPreset, a3 as getUserFriendlyMessage, a4 as getZoomPresets, a8 as isParseError, ab as isZoomPreset, ae as parseZoom, ag as renderAsync, ai as useAutoSave, aj as useClipboard, ak as useErrorNotifications, al as useSelectionHighlight, am as useTableSelection, an as useWheelZoom } from './react-Do1clrxR.js';
+export { g as DocxInput, t as toArrayBuffer } from './DocumentAgent-CRCXiBT7.js';
+export { d as AutoSaveStatus, e as ClipboardSelection, h as ErrorNotification, i as ErrorSeverity, j as PanelConfig, k as PluginPanelProps, m as SavedDocumentData, T as TABLE_DATA_ATTRIBUTES, p as createSelectionFromDOM, t as formatLastSaveTime, u as formatStorageSize, v as getAutoSaveStatusLabel, w as getAutoSaveStorageSize, x as getSelectionRuns, z as isAutoSaveSupported } from './ClipboardManager-C0rTRkVQ.js';
+import 'react';
+import 'prosemirror-view';
+import 'prosemirror-state';
+import './agentApi-BVHzyk2l.js';
+import './clipboard-D0j4w5ae.js';
+import 'react/jsx-runtime';
+import 'prosemirror-model';

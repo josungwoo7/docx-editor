@@ -32,6 +32,7 @@ import type { EditorView } from 'prosemirror-view';
 
 // Internal components
 import { HiddenProseMirror, type HiddenProseMirrorRef } from './HiddenProseMirror';
+import { findScrollTargetForPmPosition } from './scrollTarget';
 import { SelectionOverlay } from './SelectionOverlay';
 import { ImageSelectionOverlay, type ImageSelectionInfo } from './ImageSelectionOverlay';
 import { DecorationLayer } from './DecorationLayer';
@@ -2613,7 +2614,7 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
     const scrollToPositionImpl = useCallback((pmPos: number) => {
       const pageContainer = pagesContainerRef.current;
       if (!pageContainer) return;
-      const targetEl = pageContainer.querySelector(`[data-pm-start="${pmPos}"]`);
+      const targetEl = findScrollTargetForPmPosition(pageContainer, pmPos);
       if (targetEl) {
         targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }

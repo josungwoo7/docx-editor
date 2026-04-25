@@ -393,3 +393,69 @@ export function scrollToMatch(containerElement: HTMLElement | null, match: FindM
     paragraphElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 }
+
+// ============================================================================
+// PROSEMIRROR POSITION MAPPING
+// ============================================================================
+
+/**
+ * Minimal structural shape we need from a ProseMirror Node to walk top-level
+ * children. Kept structural so this util does not require importing the
+ * `prosemirror-model` types in callers that already have a typed PM node.
+ */
+interface PmNodeLike {
+  type?: { name?: string };
+  content?: { size?: number };
+  forEach?: (fn: (child: PmNodeLike, offset: number, index: number) => void) => void;
+}
+
+function isPmNodeLike(value: unknown): value is PmNodeLike {
+  if (!value || typeof value !== 'object') return false;
+  return typeof (value as { forEach?: unknown }).forEach === 'function';
+}
+
+/**
+ * Map a `FindMatch` (paragraph-index addressed against the source document
+ * model that `findInDocument` walks) back to an absolute ProseMirror position
+ * inside the editor's PM document.
+ *
+ * The source-document iterator increments the index once per
+ * `block.type === 'paragraph'`. The PM converter normally emits one
+ * `paragraph` PM node per source paragraph, plus an additional `pageBreak`
+ * PM node when the source paragraph contains a page-break run. We treat
+ * `pageBreak` nodes as siblings absorbed by the preceding paragraph slot, so
+ * the index does not drift across page breaks. Tables (which `findInDocument`
+ * does not currently traverse) are skipped without incrementing the index.
+ *
+ * Returns `null` when the document shape is not walkable or the requested
+ * paragraph index does not exist. Callers should fall back to the legacy
+ * `scrollToMatch` DOM path on `null`.
+ */
+export function findMatchToPmPosition(doc: unknown, match: FindMatch): number | null {
+  if (!match || !isPmNodeLike(doc) || typeof doc.forEach !== 'function') {
+    return null;
+  }
+
+  let pmParaIndex = 0;
+  let result: number | null = null;
+
+  doc.forEach((child, offset) => {
+    if (result !== null) return;
+    const name = child?.type?.name;
+    if (name !== 'paragraph') {
+      // pageBreak / table / textBox / etc. do not advance the source paragraph
+      // index used by findInDocument.
+      return;
+    }
+    if (pmParaIndex === match.paragraphIndex) {
+      const inside = offset + 1;
+      const contentSize = child.content?.size ?? 0;
+      const safeOffset = Math.max(0, Math.min(match.startOffset, contentSize));
+      result = inside + safeOffset;
+      return;
+    }
+    pmParaIndex++;
+  });
+
+  return result;
+}

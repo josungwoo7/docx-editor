@@ -1,0 +1,2 @@
+export{o as docxtemplaterPlugin,n as isZodSchema}from'./chunk-2BYOGSC5.mjs';import'./chunk-2KYY4YV7.mjs';import'./chunk-HXHWYQ7I.mjs';export{a as PluginRegistry,d as createPluginRegistrar,b as pluginRegistry,c as registerPlugins}from'./chunk-W2EW2FK6.mjs';import'./chunk-V57JCP3U.mjs';//# sourceMappingURL=core-plugins.mjs.map
+//# sourceMappingURL=core-plugins.mjs.map

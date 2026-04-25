@@ -60,6 +60,7 @@ import {
   useFindReplace,
   findInDocument,
   scrollToMatch,
+  findMatchToPmPosition,
   type FindMatch,
   type FindOptions,
   type FindResult,
@@ -3141,6 +3142,24 @@ body { background: white; }
   // Store the current find result for navigation
   const findResultRef = useRef<FindResult | null>(null);
 
+  // Scroll the visible paged editor to a find match. Prefer the ProseMirror
+  // position path (which works when the source-document paragraph index does
+  // not have a matching `[data-paragraph-index]` DOM node, as is the case for
+  // the paged renderer). Fall back to the legacy DOM-only scrollToMatch when
+  // the PM position cannot be resolved.
+  const scrollFindMatch = useCallback((match: FindMatch | null | undefined) => {
+    if (!match) return;
+    const pmDoc = pagedEditorRef.current?.getView()?.state.doc;
+    const pmPos = findMatchToPmPosition(pmDoc, match);
+    if (pmPos != null) {
+      pagedEditorRef.current?.scrollToPosition(pmPos);
+      return;
+    }
+    if (containerRef.current) {
+      scrollToMatch(containerRef.current, match);
+    }
+  }, []);
+
   // Handle find operation
   const handleFind = useCallback(
     (searchText: string, options: FindOptions): FindResult | null => {
@@ -3160,13 +3179,13 @@ body { background: white; }
       findReplace.setMatches(matches, 0);
 
       // Scroll to first match
-      if (matches.length > 0 && containerRef.current) {
-        scrollToMatch(containerRef.current, matches[0]);
+      if (matches.length > 0) {
+        scrollFindMatch(matches[0]);
       }
 
       return result;
     },
-    [history.state, findReplace]
+    [history.state, findReplace, scrollFindMatch]
   );
 
   // Handle find next
@@ -3178,13 +3197,10 @@ body { background: white; }
     const newIndex = findReplace.goToNextMatch();
     const match = findResultRef.current.matches[newIndex];
 
-    // Scroll to the match
-    if (match && containerRef.current) {
-      scrollToMatch(containerRef.current, match);
-    }
+    scrollFindMatch(match);
 
     return match || null;
-  }, [findReplace]);
+  }, [findReplace, scrollFindMatch]);
 
   // Handle find previous
   const handleFindPrevious = useCallback((): FindMatch | null => {
@@ -3195,13 +3211,10 @@ body { background: white; }
     const newIndex = findReplace.goToPreviousMatch();
     const match = findResultRef.current.matches[newIndex];
 
-    // Scroll to the match
-    if (match && containerRef.current) {
-      scrollToMatch(containerRef.current, match);
-    }
+    scrollFindMatch(match);
 
     return match || null;
-  }, [findReplace]);
+  }, [findReplace, scrollFindMatch]);
 
   // Handle replace current match
   const handleReplace = useCallback(

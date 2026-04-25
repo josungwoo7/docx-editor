@@ -28,6 +28,7 @@ export {
   findInDocument,
   findInParagraph,
   scrollToMatch,
+  findMatchToPmPosition,
 } from './findReplaceUtils';
 
 export type { FindReplaceOptions, FindReplaceState, UseFindReplaceReturn } from './useFindReplace';
